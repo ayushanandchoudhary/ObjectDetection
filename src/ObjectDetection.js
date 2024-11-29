@@ -1,4 +1,3 @@
-// src/ObjectDetection.js
 import React, { useEffect, useRef, useState } from "react";
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
 import * as tf from "@tensorflow/tfjs";
@@ -27,27 +26,38 @@ const ObjectDetection = () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
-        videoRef.current.srcObject = stream;
-        
-        // Ensure play() is only called once, and check if the video is already playing
-        if (videoRef.current.paused) {
-          await videoRef.current.play();
+        // Set the video stream to the video element
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play(); // Play the video after the stream is assigned
         }
       } catch (err) {
         console.error("Error accessing webcam:", err);
       }
     };
-  
+
     startWebcam();
-  
+
     // Cleanup webcam stream on component unmount
     return () => {
-      const stream = videoRef.current.srcObject;
+      const stream = videoRef.current?.srcObject;
       const tracks = stream?.getTracks();
       tracks?.forEach((track) => track.stop());
     };
-  }, []);
-  
+  }, []); // Empty dependency array to run only once
+
+  // Update the canvas size based on video size
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && canvasRef.current) {
+      // Wait until video metadata is loaded (videoWidth and videoHeight available)
+      video.onloadedmetadata = () => {
+        const { videoWidth, videoHeight } = video;
+        canvasRef.current.width = videoWidth;
+        canvasRef.current.height = videoHeight;
+      };
+    }
+  }, [videoRef.current]);
 
   // Object detection function
   const detectObjects = async () => {
@@ -64,7 +74,7 @@ const ObjectDetection = () => {
     const video = videoRef.current;
 
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous frame
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height); // Draw current frame
 
     predictions.forEach((prediction) => {
       context.beginPath();
@@ -86,15 +96,6 @@ const ObjectDetection = () => {
     });
   };
 
-  // Update the canvas size based on video size
-  useEffect(() => {
-    if (videoRef.current && canvasRef.current) {
-      const { videoWidth, videoHeight } = videoRef.current;
-      canvasRef.current.width = videoWidth;
-      canvasRef.current.height = videoHeight;
-    }
-  }, [videoRef.current]);
-
   // Use the detection function every 100ms
   useEffect(() => {
     const interval = setInterval(() => {
@@ -109,7 +110,7 @@ const ObjectDetection = () => {
       <h1>Real-Time Object Detection</h1>
       <video
         ref={videoRef}
-        style={{ display: "none" }}
+        style={{ display: "none" }} // Hide the video element if you want to use the canvas only
         width="640"
         height="480"
         autoPlay
